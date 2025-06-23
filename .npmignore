@@ -1,0 +1,18 @@
+# .npmignore
+
+# Dependencies
+/node_modules
+node_modules
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Git files
+.git
+.gitignore
+
+# Local data / state files
+data.json
+.git/undo_commit_hash.txt
