@@ -79,9 +79,9 @@ export async function saveUndoPoint(basePath = process.cwd()) {
     console.log(chalk.gray(`Undo point saved at commit ${log.latest.hash.substring(0, 7)}.`));
   } catch (err) {
     try {
-        await writeFile(undoFilePath, 'initial');
+      await writeFile(undoFilePath, 'initial');
     } catch (writeErr) {
-        console.error(chalk.red("Could not write undo point file."), writeErr)
+      console.error(chalk.red("Error: Could not write undo point file. Check permissions."), writeErr);
     }
   }
 }
@@ -92,9 +92,13 @@ export async function performUndo(basePath = process.cwd()) {
   try {
     const commitHash = await readFile(undoFilePath, 'utf-8');
     if (commitHash === 'initial') throw new Error("This is the first action; nothing to undo.");
+    
     console.log(chalk.yellow(`Resetting repository to commit ${commitHash.substring(0, 7)}...`));
     await git.reset(['--hard', commitHash]);
-    await git.push('origin', 'main', { '--force': null });
+    
+    const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+    await git.push('origin', currentBranch, { '--force': true });
+
     await rm(undoFilePath);
     console.log(chalk.green.inverse('✅ Undo successful.'));
   } catch (error) {
@@ -106,14 +110,35 @@ export async function wipeHistory(basePath = process.cwd()) {
   const git = simpleGit({ baseDir: basePath });
   const dataFilePath = path.join(basePath, DATA_FILE_PATH);
   console.log(chalk.red.bold('\nThis will delete the ENTIRE commit history of this repository.'));
+  
   try {
+    try {
+      await git.branch(['-D', 'temp-branch']);
+    } catch (e) { /* This is okay */ }
+
+    let primaryBranch;
+    try {
+      primaryBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+    } catch (e) {
+      primaryBranch = 'main'; 
+    }
+    
     await git.checkout({ '--orphan': 'temp-branch' });
+    
     await writeFile(dataFilePath, JSON.stringify({ reset: new Date().toISOString() }));
     await git.add(DATA_FILE_PATH);
     await git.commit('chore: repository reset');
-    await git.branch(['-D', 'main']);
+
+    if (primaryBranch) {
+      try {
+        await git.branch(['-D', primaryBranch]);
+      } catch(e) { /* This is okay */ }
+    }
+
     await git.branch(['-m', 'main']);
-    await git.push('origin', 'main', { '--force': null });
+
+    await git.push('origin', 'main', { '--force': true });
+    
     console.log(chalk.bold.green.inverse('✅ Repository has been successfully wiped.'));
   } catch (error) {
     console.error(chalk.red('Failed to wipe repository:'), error.message);

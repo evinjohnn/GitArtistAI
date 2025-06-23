@@ -10,6 +10,7 @@ import * as githubManager from './github-manager.js';
 import { existsSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
+import * as repoManager from './repo-manager.js';
 
 // =============================================================================
 // HELPER FUNCTIONS & CONSTANTS
@@ -52,23 +53,33 @@ function renderPreview(pixels) {
 }
 
 /**
- * Deterministically converts text to pixel data using the font library.
+ * Deterministically converts text to pixel data using the 7-pixel-high font library.
+ * This function is now simpler and directly maps the font data to the grid.
  * @param {string} text The text to render.
  * @returns {Array<[number, number, number]>} Pixel data.
  */
 function processTextIntent(text) {
   const pixels = [];
   let currentWeekOffset = 0;
+  
   for (const char of text.toUpperCase()) {
-    const charData = textArt[char] || textArt[' '];
+    const charData = textArt[char] || textArt[' ']; // Default to a space
+    
     if (charData) {
+      // charData is an array of columns (weeks).
       for (let week = 0; week < charData.length; week++) {
-        for (let day = 0; day < charData[week].length; day++) {
-          if (charData[week][day] === 1) {
-            pixels.push([currentWeekOffset + week, day, 4]); // Draw text at max density
+        const column = charData[week];
+        
+        // column is an array of 7 pixels for Sun-Sat (days).
+        for (let day = 0; day < column.length; day++) {
+          if (column[day] === 1) {
+            // The `day` index (0-6) now directly maps to the graph day (Sun-Sat).
+            // No more `+1` math is needed.
+            pixels.push([currentWeekOffset + week, day, 4]); // Draw at max density
           }
         }
       }
+      // Add a 1-column space after each character for readability
       currentWeekOffset += charData.length + 1;
     }
   }
@@ -160,7 +171,7 @@ async function promptForArtAndCommit() {
     }]);
     // --- END: New Prompt ---
 
-    const { initialPrompt } = await inquirer.prompt([{ type: 'input', name: 'initialPrompt', message: 'Describe what you want to create (e.g., "star", "evin", "a helicopter"):' }]);
+    const { initialPrompt } = await inquirer.prompt([{ type: 'input', name: 'initialPrompt', message: 'Describe what you want to create (e.g., "star", "create a ship"):' }]);
     const userInput = initialPrompt;
 
     console.log(chalk.gray('\n🤖 Triage AI is analyzing your request...'));
@@ -242,6 +253,7 @@ async function promptForArtAndCommit() {
         default: true,
     }]);
 
+    
     if (confirm) {
       const currentPath = process.cwd();
       await gitManager.saveUndoPoint(currentPath);
@@ -252,7 +264,8 @@ async function promptForArtAndCommit() {
 }
 
 async function handleNewRepoWorkflow() {
-  if (!process.env.GITHUB_PAT) {
+  const GITHUB_PAT = process.env.GITHUB_PAT;
+  if (!GITHUB_PAT) {
     console.error(chalk.red.bold('\nFATAL ERROR: GITHUB_PAT is not set in your .env file.'));
     console.error(chalk.yellow('To use this feature, please follow these steps:'));
     console.error('1. Go to https://github.com/settings/tokens/new');
@@ -271,24 +284,20 @@ async function handleNewRepoWorkflow() {
       validate: input => input.length > 0 || 'Repository name cannot be empty.'
   }]);
 
-  // --- NEW PROMPT FOR PRIVACY ---
   const { isPrivate } = await inquirer.prompt([{
       type: 'confirm',
       name: 'isPrivate',
       message: 'Should this new repository be private? (Note: You must enable "private contributions" in your GitHub profile settings to see the graph)',
-      default: false // Default to public, which is safer for visibility
+      default: false
   }]);
-  // --- END OF NEW PROMPT ---
 
-  // --- MODIFY: Pass the isPrivate flag to the createRepo function ---
-  const repoUrl = await githubManager.createRepo(repoName, process.env.GITHUB_PAT, isPrivate);
+  const repoUrl = await githubManager.createRepo(repoName, GITHUB_PAT, isPrivate);
 
   if (!repoUrl) {
-    console.log(chalk.red('\nFailed to create repository. Please check the errors above. Aborting.'));
+    console.log(chalk.red('\nFailed to create repository. Aborting.'));
     return;
   }
 
-  // --- AUTOMATE LOCAL SETUP ---
   const localRepoPath = path.join(process.cwd(), repoName);
   if (existsSync(localRepoPath)) {
     console.error(chalk.red.bold(`\nA directory named "${repoName}" already exists here. Please remove it or choose a different name.`));
@@ -297,39 +306,69 @@ async function handleNewRepoWorkflow() {
 
   console.log(chalk.blue(`Setting up local directory at: ${localRepoPath}`));
   mkdirSync(localRepoPath);
-  process.chdir(localRepoPath); // IMPORTANT: Change the current directory to the new folder
+  process.chdir(localRepoPath);
 
+  // --- SAVE THE NEW REPO ---
+  repoManager.addRepository({
+    name: repoName,
+    localPath: localRepoPath,
+    remoteUrl: repoUrl,
+  });
+
+  const authenticatedUrl = repoUrl.replace('https://', `https://${GITHUB_PAT}@`);
   try {
-      execSync('git init');
-      execSync(`git remote add origin ${repoUrl}`);
-      console.log(chalk.green('✅ Local repository initialized and linked to GitHub.'));
+    execSync('git init');
+    execSync(`git remote add origin "${authenticatedUrl}"`);
+    console.log(chalk.green('✅ Local repository initialized and linked to GitHub.'));
   } catch (e) {
-      console.error(chalk.red('Failed to initialize local git repository.'), e);
-      return;
+    console.error(chalk.red('Failed to initialize local git repository.'), e);
+    return;
   }
-  
-  // Now that we are in a configured repo, run the drawing workflow
+
   await promptForArtAndCommit();
 }
 
-// This is the old workflow, now renamed
-async function handleExistingRepoWorkflow() {
-    console.log(chalk.cyan('\nThis requires you to be inside a local, empty git repository that is already linked to GitHub.'));
-    await promptForArtAndCommit();
+// --- REPLACE the old handleExistingRepoWorkflow with this NEW version ---
+async function handleSelectExistingRepoWorkflow() {
+  const repos = repoManager.getRepositories();
+
+  if (repos.length === 0) {
+    console.log(chalk.yellow('\nNo saved repositories found.'));
+    console.log(chalk.cyan('Please use the "Create New Art Repository" option first.'));
+    return;
+  }
+  
+  const { selectedRepoPath } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedRepoPath',
+      message: 'Select an existing art repository to draw in:',
+      choices: repos.map(repo => ({
+          name: `${repo.name} (${chalk.gray(repo.localPath)})`,
+          value: repo.localPath,
+      })),
+  }]);
+
+  if (!existsSync(selectedRepoPath)) {
+      console.error(chalk.red.bold(`\nError: The directory for this repository no longer exists at:`));
+      console.error(chalk.red(selectedRepoPath));
+      console.log(chalk.yellow('Please either restore the folder or create a new repository.'));
+      return;
+  }
+  
+  process.chdir(selectedRepoPath);
+  console.log(chalk.blue(`\nSwitched to repository "${path.basename(selectedRepoPath)}". Let's draw!`));
+  await promptForArtAndCommit();
 }
 
-// =============================================================================
-// UPDATED MAIN MENU
-// =============================================================================
+
 export async function startChat() {
   while (true) {
     const { action } = await inquirer.prompt([
       {
         type: 'list', name: 'action', message: 'What would you like to do?',
         choices: [
-          // --- NEW MENU OPTIONS ---
           { name: '✨ Create New Art Repository & Draw (Recommended)', value: 'new_repo' },
-          { name: '🎨 Draw in Existing Local Repository', value: 'existing_repo' },
+          { name: '🎨 Draw in a Saved Repository', value: 'existing_repo' },
           new inquirer.Separator(),
           { name: '↩️  Undo Last Action (in current repo)', value: 'undo' },
           { name: '💥 Wipe All Commit History (in current repo)', value: 'wipe' },
@@ -339,9 +378,8 @@ export async function startChat() {
     ]);
     try {
       switch (action) {
-        // --- NEW HANDLERS ---
         case 'new_repo': await handleNewRepoWorkflow(); break;
-        case 'existing_repo': await handleExistingRepoWorkflow(); break;
+        case 'existing_repo': await handleSelectExistingRepoWorkflow(); break;
         case 'undo': await handleUndoRequest(); break;
         case 'wipe': await handleWipeRequest(); break;
         case 'exit': console.log(chalk.yellow('Happy painting!')); return;
