@@ -7,7 +7,7 @@ import { patterns, textArt } from './patterns.js';
 import { getCanvasStartDate } from './utils.js';
 import * as gitManager from './git-manager.js';
 import * as githubManager from './github-manager.js';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 import * as repoManager from './repo-manager.js';
@@ -61,26 +61,27 @@ function renderPreview(pixels) {
 function processTextIntent(text) {
   const pixels = [];
   let currentWeekOffset = 0;
-  
+
   for (const char of text.toUpperCase()) {
-    const charData = textArt[char] || textArt[' ']; // Default to a space
+    const charData = textArt[char] || textArt[' '];
     
-    if (charData) {
-      // charData is an array of columns (weeks).
-      for (let week = 0; week < charData.length; week++) {
-        const column = charData[week];
-        
-        // column is an array of 7 pixels for Sun-Sat (days).
-        for (let day = 0; day < column.length; day++) {
-          if (column[day] === 1) {
-            // The `day` index (0-6) now directly maps to the graph day (Sun-Sat).
-            // No more `+1` math is needed.
-            pixels.push([currentWeekOffset + week, day, 4]); // Draw at max density
+    // The new font data is structured as [row][column] to be human-readable.
+    // We need to transpose it for our rendering logic.
+    if (charData && charData.length > 0) {
+      const numRows = charData.length;
+      const numCols = charData[0].length;
+
+      // Loop through columns (weeks) first
+      for (let col = 0; col < numCols; col++) {
+        // Then loop through rows (days)
+        for (let row = 0; row < numRows; row++) {
+          if (charData[row][col] === 1) {
+            // The `row` index (0-6) correctly maps to the graph day (Sun-Sat).
+            pixels.push([currentWeekOffset + col, row, 4]);
           }
         }
       }
-      // Add a 1-column space after each character for readability
-      currentWeekOffset += charData.length + 1;
+      currentWeekOffset += numCols + 1; // Add a 1-column space
     }
   }
   return pixels;
