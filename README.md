@@ -1,89 +1,100 @@
 🎨 AI Git Artist: The Definitive Edition
 
-[License: MIT]      [Node.js >= 18]      [Built with Gemini 1.5]
+![npm version](https://img.shields.io/npm/v/@evinjohn/ai-git-artist.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Node.js >= 18](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
+![Built with Gemini 1.5](https://img.shields.io/badge/Built%20with-Gemini%201.5-blueviolet)
 
-AI Git Artist is a professional-grade command-line tool that transforms your GitHub contribution graph into a canvas for stunning pixel art. Inspired by the legendary gitfiti.py and supercharged with Google’s cutting-edge Gemini 1.5 AI, this tool blends creativity, automation, and reliability into a single CLI experience.
+AI Git Artist is a professional-grade command-line tool that transforms your GitHub contribution graph into a canvas for stunning pixel art. It automates everything from repository creation to the final commit push, allowing you to focus purely on the creative process.
 
-🖼️ Demonstration
-----------------
-(Insert Demo GIF Here)
-A preview of the tool creating a 'rocket' on the command line.
+This project is directly inspired by the legendary `gitfiti.py` while being powered by Google's cutting-edge Gemini 1.5 AI model.
 
-✨ Core Features
+[DEMO]
 ---------------
-🧠 Ultimate Hybrid Model (Triage AI System)
-- Perfect Text Rendering: Uses a deterministic pixel-perfect font engine.
-- Reliable Shapes: Uses a library of hand-crafted patterns.
-- Creative AI Generation: For custom requests, generates fresh pixel art using Gemini AI.
+(A demonstration of the tool's automated repository creation and text-to-art workflow)
+https://i.imgur.com/G5g2fN7.gif
 
-🎯 gitfiti-Grade Canvas Control
-- Auto Date Alignment: Ensures your art starts on the correct date.
-- Week Offset: Shift your art left or right for composition.
+✨ Features Spotlight
+---------------------
 
-🎨 Advanced Artistry
-- Uses 4 density levels (1–15 commits) for highlights and texture.
+🧠 Intelligent Art Generation
+-----------------------------
+- Hybrid AI Triage System: Analyzes your request and chooses the best rendering path.
+- Pixel-Perfect Text Engine: Uses a deterministic 7-pixel-high font for clean typography.
+- Curated Pattern Library: Includes high-quality, hand-crafted shapes like "star" or "kitty".
+- Generative AI Creativity: Produces brand new pixel art (e.g. "helicopter", "dragon") with AI refinement.
 
-🛡️ Safety-First Design
-- Undo: Revert your last drawing easily.
-- Wipe: Reset your repo safely with confirmation.
+🚀 Workflow & Automation
+------------------------
+- Fully Automated Setup: Creates GitHub repo, links it, initializes locally — all automatically.
+- Persistent Repo Manager: Easily access previously created art repos.
+- Automated Authentication: Handles GitHub push/pull using your PAT without credential conflicts.
 
-🚀 Getting Started
-------------------
-Prerequisites:
-- Node.js v18+
-- Git
-- Google AI API Key (Get it from Google AI Studio)
+🎨 Creative Control & Precision
+-------------------------------
+- Flexible Date Control: Align art with the real GitHub graph start date or use custom dates.
+- Canvas Positioning: Offset your creation left or right using "Week Offset".
+- Multi-Level Density: Uses 1–15+ commits/day to simulate shading and highlights.
 
-1. Clone the Repository:
-   git clone https://github.com/your-username/ai-git-artist.git
-   cd ai-git-artist
+🛡️ Safety & Convenience
+------------------------
+- Undo Last Action: Revert a drawing with a simple menu option.
+- Resilient Wipe History: Clean slate with a double-confirmed reset, handles edge cases.
+- Public/Private Mode: Choose repo visibility on creation.
 
-2. Install Dependencies:
-   npm install
+📦 Installation & Usage
+-----------------------
 
-3. Set Up Environment Variables:
-   Create a `.env` file in the root directory:
-   GOOGLE_API_KEY=your_key_here
+Quick Start (Recommended for Users)
+Install globally via npm:
 
-4. Link to an Empty GitHub Repository:
-   ⚠️ WARNING: This tool force-pushes and rewrites history. Use only on a dedicated, empty repo.
+    npm install -g @evinjohn/ai-git-artist
 
-   git init
-   git remote add origin https://github.com/your-username/your-empty-art-repo.git
+One-Time API Key Setup
+On first run, it will prompt you to create a .env file.
 
-5. Start the Application:
-   npm start
+1. Get Your Keys:
+   - Google API Key → from Google AI Studio
+   - GitHub PAT → from GitHub Developer Settings (classic token with `repo` scope)
 
-🛠️ How It Works: The Triage Architecture
------------------------------------------
-1. User Input (ui.js): You enter a shape or word.
-2. AI Triage (ai.js): Classifies intent:
-   - text → use font engine
-   - known_shape → from library
-   - custom_shape → generate with AI
-3. Canvas (ui.js): Renders preview adjusted by offset.
-4. Git (git-manager.js): Commits are generated and pushed to GitHub.
+2. Create Config File:
+   You'll be told the path (e.g. ~/.config/ai-git-artist/.env). Add:
 
-📂 File Structure
------------------
-- index.js: Main launcher
-- src/ui.js: User interface and logic controller
-- src/ai.js: Triage and art generation AI
-- src/patterns.js: Pattern + font library
-- src/git-manager.js: Handles Git commands and history
-- src/utils.js: Helper tools (e.g., start date logic)
+    GOOGLE_API_KEY=your_google_key_here
+    GITHUB_PAT=your_github_pat_here
 
-🔮 Future Features
-------------------
-- 🖼️ Image-to-Graffiti: Convert logos/images to commits using Gemini.
-- ✍️ Font & Density Options
-- 🎨 Terminal Template Painter
-- 🌐 Web UI for easy access
+3. Run the Artist:
 
-🙏 Acknowledgements
--------------------
-Thanks to the original gitfiti project by gelstudios for the inspiration.
+    ai-git-artist
+
+You're ready to create art!
+
+Developer Setup (Manual)
+
+1. Clone the repository:
+
+    git clone https://github.com/evinjohnn/GitArtistAI.git
+    cd GitArtistAI
+
+2. Install dependencies:
+
+    npm install
+
+3. Create .env in root directory:
+
+    GOOGLE_API_KEY=your_google_key_here
+    GITHUB_PAT=your_github_pat_here
+
+4. Start the app:
+
+    npm start
+
+The tool will launch with full source control.
+
+🙏 Inspiration
+--------------
+Special thanks to `gelstudios/gitfiti` for the original concept. This modern version extends that legacy with AI generation and full GitHub automation.
 
 📜 License
 ----------
-Licensed under the MIT License. See LICENSE file for details.
+This project is licensed under the MIT License.
